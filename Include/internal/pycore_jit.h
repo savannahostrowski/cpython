@@ -11,11 +11,16 @@ extern "C" {
 
 #ifdef _Py_JIT
 
-    #include <TargetConditionals.h>
-
-    #if TARGET_OS_MAC && defined(__arm64__)
-        // clang 19 does not support preserve_none on arm64 macOS
-        typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
+    #ifdef __APPLE__
+        #include <TargetConditionals.h>
+    
+        #if TARGET_OS_MAC && defined(__arm64__)
+            // clang 19 does not support preserve_none on arm64
+            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
+        #else
+            // For other platforms, use preserve_none
+            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
+        #endif
     #else
         // For other platforms, use preserve_none
         typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
