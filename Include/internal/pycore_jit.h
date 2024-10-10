@@ -11,7 +11,13 @@ extern "C" {
 
 #ifdef _Py_JIT
 
-typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *frame, _PyStackRef *stack_pointer, PyThreadState *tstate);
+    #if defined(__x86_64__)
+        // For x86_64, use preserve_none
+        typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
+    #else
+        // For other platforms, use the default calling convention
+        typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
+    #endif
 
 int _PyJIT_Compile(_PyExecutorObject *executor, const _PyUOpInstruction *trace, size_t length);
 void _PyJIT_Free(_PyExecutorObject *executor);
