@@ -11,17 +11,13 @@ extern "C" {
 
 #ifdef _Py_JIT
 
-    #ifdef __APPLE__
-        #include <TargetConditionals.h>
-        #if TARGET_OS_MAC && defined(__arm64__)
-            // Apple Silicon (ARM architecture) specific definition
-            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
-        #else
-            // Other Apple platforms or Intel-based macOS
-            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
-        #endif
+    #include <TargetConditionals.h>
+    
+    #if TARGET_OS_MAC && defined(__arm64__)
+        // On Apple Silicon (ARM architecture), do not use preserve_none
+        typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
     #else
-        // Non-Apple platforms
+        // For other platforms, use preserve_none
         typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
     #endif
 
