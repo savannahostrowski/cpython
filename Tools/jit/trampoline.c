@@ -3,7 +3,7 @@
 #include "pycore_ceval.h"
 #include "pycore_frame.h"
 #include "pycore_jit.h"
-preserve_none_jit_func
+
 // This is where the calling convention changes, on platforms that require it.
 // The actual change is patched in while the JIT compiler is being built, in
 // Tools/jit/_targets.py. On other platforms, this function compiles to nothing.
