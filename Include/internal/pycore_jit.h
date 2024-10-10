@@ -11,24 +11,12 @@ extern "C" {
 
 #ifdef _Py_JIT
 
-    #ifdef __APPLE__
-        #include <TargetConditionals.h>
-
-        #if TARGET_OS_MAC && defined(__arm64__)
-            // clang 19 does not support preserve_none on arm64 macOS
-            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
-        #else
-            // For other Apple platforms, use preserve_none
-            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
-        #endif
+    #if defined(__x86_64__)
+        // For x86_64, use preserve_none
+        typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
     #else
-        #if defined(__x86_64__)
-            // For x86_64, use preserve_none
-            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *) __attribute__((preserve_none));
-        #else
-            // For other platforms, use the default calling convention
-            typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
-        #endif
+        // For other platforms, use the default calling convention
+        typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
     #endif
 
 int _PyJIT_Compile(_PyExecutorObject *executor, const _PyUOpInstruction *trace, size_t length);
