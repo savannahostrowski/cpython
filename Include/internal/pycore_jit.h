@@ -13,7 +13,7 @@ extern "C" {
 
     #ifdef __APPLE__
         #include <TargetConditionals.h>
-    
+
         #if TARGET_OS_MAC && defined(__arm64__)
             // clang 19 does not support preserve_none on arm64
             typedef _Py_CODEUNIT *(*jit_func)(_PyInterpreterFrame *, _PyStackRef *, PyThreadState *);
