@@ -77,7 +77,7 @@ jobs:
             compiler: msvc
           - target: x86_64-apple-darwin/clang
             architecture: x86_64
-            runner: macos-13
+            runner: macos-14
             compiler: clang
           - target: aarch64-apple-darwin/clang
             architecture: aarch64
