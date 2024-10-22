@@ -124,6 +124,7 @@ jobs:
       - name: Native macOS
         if: runner.os == 'macOS'
         run: |
+          set -x
           brew update
           brew install llvm@${{ matrix.llvm }}
           SDKROOT="$(xcrun --show-sdk-path)" \
