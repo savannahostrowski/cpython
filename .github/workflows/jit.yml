@@ -36,6 +36,7 @@ jobs:
         run: |
           ./configure --enable-experimental-jit=interpreter --with-pydebug
           make all --jobs 4
+
   jit:
     name: ${{ matrix.target }} (${{ matrix.debug && 'Debug' || 'Release' }})
     needs: interpreter
@@ -75,7 +76,8 @@ jobs:
         # This can be removed once macos-13 is retired.
         run: |
           brew update
-          brew link --overwrite python@3.13
+          brew install python@3.13
+          brew unlink python@3.11 brew link --force --overwrite python@3.13
           brew install llvm@${{ matrix.llvm }}
           SDKROOT="$(xcrun --show-sdk-path)" \
             ./configure --enable-experimental-jit ${{ matrix.debug && '--with-pydebug' || '--enable-optimizations --with-lto' }}
