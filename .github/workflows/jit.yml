@@ -78,7 +78,7 @@ jobs:
         # This can be removed once macos-13 is retired.
         run: |
           brew update && brew upgrade
-          brew_smart_install "python@3.12"
+          brew_smart_install "python@3.13"
           brew install llvm@${{ matrix.llvm }}
           SDKROOT="$(xcrun --show-sdk-path)" \
             ./configure --enable-experimental-jit ${{ matrix.debug && '--with-pydebug' || '--enable-optimizations --with-lto' }}
