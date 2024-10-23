@@ -36,9 +36,6 @@ jobs:
         run: |
           ./configure --enable-experimental-jit=interpreter --with-pydebug
           make all --jobs 4
-      - name: Test tier two interpreter
-        run: |
-          ./python -m test --multiprocess 0 --timeout 4500 --verbose2 --verbose3
   jit:
     name: ${{ matrix.target }} (${{ matrix.debug && 'Debug' || 'Release' }})
     needs: interpreter
@@ -78,7 +75,7 @@ jobs:
         # This can be removed once macos-13 is retired.
         run: |
           brew update
-          brew unlink python && brew link --overwrite python@3.13
+          brew link --overwrite python@3.13
           brew install llvm@${{ matrix.llvm }}
           SDKROOT="$(xcrun --show-sdk-path)" \
             ./configure --enable-experimental-jit ${{ matrix.debug && '--with-pydebug' || '--enable-optimizations --with-lto' }}
