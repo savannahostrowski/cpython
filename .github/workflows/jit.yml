@@ -70,17 +70,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Ensure Python 3.13 is installed
+        # The `brew unlink` is required as a result of https://github.com/actions/runner-images/issues/9966 for macos-13 (x86_64).
+        # This can be removed once macos-13 is retired.
+      - name: Native macOS
+        if: runner.os == 'macOS'
         run: |
           brew update
-          if ! brew ls --versions python@3.13 > /dev/null; then
-            brew install python@3.13
-          fi
           find /usr/local/bin -lname '*/Library/Frameworks/Python.framework/*' -delete
-          brew unlink python@3.11 || true
-          brew link --force --overwrite python@3.13
           brew install llvm@${{ matrix.llvm }}
           SDKROOT="$(xcrun --show-sdk-path)" \
             ./configure --enable-experimental-jit ${{ matrix.debug && '--with-pydebug' || '--enable-optimizations --with-lto' }}
           make all --jobs 4
           ./python.exe -m test --multiprocess 0 --timeout 4500 --verbose2 --verbose3
+    
