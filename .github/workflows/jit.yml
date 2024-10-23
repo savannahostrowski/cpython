@@ -75,9 +75,10 @@ jobs:
       - name: Native macOS
         if: runner.os == 'macOS'
         # The `brew unlink` is required as a result of https://github.com/actions/runner-images/issues/9966 for macos-13 (x86_64).
+        # This can be removed once macos-13 is retired.
         run: |
-          brew update
-          brew unlink python@3.11 && brew link --force --overwrite python@3.13
+          brew update && brew upgrade
+          brew_smart_install "python@3.12"
           brew install llvm@${{ matrix.llvm }}
           SDKROOT="$(xcrun --show-sdk-path)" \
             ./configure --enable-experimental-jit ${{ matrix.debug && '--with-pydebug' || '--enable-optimizations --with-lto' }}
