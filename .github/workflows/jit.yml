@@ -77,6 +77,8 @@ jobs:
         run: |
           brew update
           brew install python@3.13
+          find /usr/local/bin -lname '*/Library/Frameworks/Python.framework/*' -delete
+
           brew unlink python@3.11 && brew link --force --overwrite python@3.13
           brew install llvm@${{ matrix.llvm }}
           SDKROOT="$(xcrun --show-sdk-path)" \
