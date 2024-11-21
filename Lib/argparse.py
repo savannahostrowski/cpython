@@ -1377,6 +1377,7 @@ class _ActionsContainer(object):
         # groups
         self._action_groups = []
         self._mutually_exclusive_groups = []
+        self._necessarily_inclusive_groups = []
 
         # defaults storage
         self._defaults = {}
@@ -1489,6 +1490,11 @@ class _ActionsContainer(object):
         self._mutually_exclusive_groups.append(group)
         return group
 
+    def add_necessarily_inclusive_group(self, **kwargs):
+        group = _NecessarilyInclusiveGroup(self, **kwargs)
+        self._necessarily_inclusive_groups.append(group)
+        return group
+
     def _add_action(self, action):
         # resolve any conflicts
         self._check_conflict(action)
@@ -1554,6 +1560,19 @@ class _ActionsContainer(object):
             # map the actions to their new mutex group
             for action in group._group_actions:
                 group_map[action] = mutex_group
+
+        # add container's necessarily inclusive groups
+        for group in container._necessarily_inclusive_groups:
+            if group._container is container:
+                cont = self
+            else:
+                cont = title_group_map[group._container.title]
+            ni_group = cont.add_necessarily_inclusive_group(
+                required=group.required)
+
+            # map the actions to their new ni group
+            for action in group._group_actions:
+                group_map[action] = ni_group
 
         # add all actions to this container or their group
         for action in container._actions:
@@ -1698,6 +1717,8 @@ class _ArgumentGroup(_ActionsContainer):
         self._has_negative_number_optionals = \
             container._has_negative_number_optionals
         self._mutually_exclusive_groups = container._mutually_exclusive_groups
+        self._necessarily_inclusive_groups = \
+            container._necessarily_inclusive_groups
 
     def _add_action(self, action):
         action = super(_ArgumentGroup, self)._add_action(action)
@@ -1746,6 +1767,21 @@ class _MutuallyExclusiveGroup(_ArgumentGroup):
         )
         return super().add_mutually_exclusive_group(*args, **kwargs)
 
+class _NecessarilyInclusiveGroup(_ArgumentGroup):
+
+    def __init__(self, container, required=False):
+        super(_NecessarilyInclusiveGroup, self).__init__(container)
+        self.required = required
+        self._container = container
+
+    def _add_action(self, action):
+        action = self._container._add_action(action)
+        self._group_actions.append(action)
+        return action
+
+    def _remove_action(self, action):
+        self._container._remove_action(action)
+        self._group_actions.remove(action)
 
 def _prog_name(prog=None):
     if prog is not None:
@@ -2275,6 +2311,15 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
                              if action.help is not SUPPRESS]
                     msg = _('one of the arguments %s is required')
                     raise ArgumentError(None, msg % ' '.join(names))
+
+        for group in self._necessarily_inclusive_groups:
+            missing_actions = []
+            for action in group._group_actions:
+                if action not in seen_non_default_actions:
+                    missing_actions.append(_get_action_name(action))
+            if missing_actions:
+                msg = _('the following arguments are required: %s')
+                raise ArgumentError(None, msg % ', '.join(missing_actions))
 
         # return the updated namespace and the extra arguments
         return namespace, extras
