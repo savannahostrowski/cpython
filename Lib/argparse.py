@@ -447,22 +447,32 @@ class HelpFormatter(object):
             # add the action string to the list
             parts.append(part)
 
-        # group mutually exclusive actions
+        # group mutually exclusive and necessarily inclusive actions
         inserted_separators_indices = set()
         for start, end in sorted(inserts, reverse=True):
             group = inserts[start, end]
             group_parts = [item for item in parts[start:end] if item is not None]
             group_size = len(group_parts)
-            if group.required:
+            
+            # find the group type
+            if isinstance(group, _NecessarilyInclusiveGroup):
+                print('yes')
                 open, close = "()" if group_size > 1 else ("", "")
-            else:
-                open, close = "[]"
+                separator = " & "
+            else:  # Mutually exclusive group
+                if group.required:
+                    open, close = "()" if group_size > 1 else ("", "")
+                else:
+                    open, close = "[]"
+                print('ddd')
+                separator = " | "
+            
             group_parts[0] = open + group_parts[0]
             group_parts[-1] = group_parts[-1] + close
             for i, part in enumerate(group_parts[:-1], start=start):
                 # insert a separator if not already done in a nested group
                 if i not in inserted_separators_indices:
-                    parts[i] = part + ' |'
+                    parts[i] = part + separator
                     inserted_separators_indices.add(i)
             parts[start + group_size - 1] = group_parts[-1]
             for i in range(start + group_size, end):
@@ -1775,6 +1785,10 @@ class _NecessarilyInclusiveGroup(_ArgumentGroup):
         self._container = container
 
     def _add_action(self, action):
+        if not action.required:
+            msg = 'necessarily inclusive arguments must be required'
+            raise ValueError(msg)
+
         action = self._container._add_action(action)
         self._group_actions.append(action)
         return action
@@ -2022,6 +2036,15 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
                 conflicts = action_conflicts.setdefault(mutex_action, [])
                 conflicts.extend(group_actions[:i])
                 conflicts.extend(group_actions[i + 1:])
+
+        # map all necessarily inclusive arguments to the other arguments
+        # they must occur with
+        action_necessities = {}
+        for ni_group in self._necessarily_inclusive_groups:
+            group_actions = ni_group._group_actions
+            for ni_action in ni_group._group_actions:
+                necessities = action_necessities.setdefault(ni_action, [])
+                necessities.extend(group_actions)
 
         # find all option indices, and determine the arg_string_pattern
         # which has an 'O' if there is an option at an index,
