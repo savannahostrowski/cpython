@@ -96,7 +96,7 @@ jobs:
       - name: Native Windows
         if: runner.os == 'Windows' && matrix.architecture != 'ARM64'
         run: |
-          winget install -e --id LLVM.LLVM --version ${{ matrix.llvm }}.1.0
+          winget install -e --id LLVM.LLVM --version ${{ matrix.llvm }}.1.0 --accept-package-agreements --accept-source-agreements
           ./PCbuild/build.bat --experimental-jit ${{ matrix.debug && '-d' || '' }} -p ${{ matrix.architecture }}
           ./PCbuild/rt.bat ${{ matrix.debug && '-d' || '' }} -p ${{ matrix.architecture }} -q --multiprocess 0 --timeout 4500 --verbose2 --verbose3
 
@@ -104,7 +104,7 @@ jobs:
       - name: Emulated Windows
         if: runner.os == 'Windows' && matrix.architecture == 'ARM64'
         run: |
-
+          winget install -e --id LLVM.LLVM --version ${{ matrix.llvm }}.1.0 --accept-package-agreements --accept-source-agreements
           ./PCbuild/build.bat --experimental-jit ${{ matrix.debug && '-d' || '' }} -p ${{ matrix.architecture }}
 
         # The `find` line is required as a result of https://github.com/actions/runner-images/issues/9966.
