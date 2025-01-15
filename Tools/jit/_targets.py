@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import sys
 import tempfile
 import typing
@@ -21,6 +22,7 @@ if sys.version_info < (3, 11):
 
 TOOLS_JIT_BUILD = pathlib.Path(__file__).resolve()
 TOOLS_JIT = TOOLS_JIT_BUILD.parent
+TOOLS_JIT_STENCILS = TOOLS_JIT / "stencils"
 TOOLS = TOOLS_JIT.parent
 CPYTHON = TOOLS.parent
 PYTHON_EXECUTOR_CASES_C_H = CPYTHON / "Python" / "executor_cases.c.h"
@@ -52,6 +54,8 @@ class _Target(typing.Generic[_S, _R]):
         hasher.update(PYTHON_EXECUTOR_CASES_C_H.read_bytes())
         hasher.update((out / "pyconfig.h").read_bytes())
         for dirpath, _, filenames in sorted(os.walk(TOOLS_JIT)):
+            if pathlib.Path(dirpath) == TOOLS_JIT_STENCILS:
+                continue
             for filename in filenames:
                 hasher.update(pathlib.Path(dirpath, filename).read_bytes())
         return hasher.hexdigest()
@@ -176,41 +180,44 @@ class _Target(typing.Generic[_S, _R]):
             )
         return stencil_groups
 
-    def build(
-        self, out: pathlib.Path, *, comment: str = "", force: bool = False
-    ) -> None:
+    def build(self, out: pathlib.Path, *, force: bool = False) -> None:
         """Build jit_stencils.h in the given directory."""
         if not self.stable:
             warning = f"JIT support for {self.triple} is still experimental!"
             request = "Please report any issues you encounter.".center(len(warning))
             outline = "=" * len(warning)
             print("\n".join(["", outline, warning, request, outline, ""]))
-        digest = f"// {self._compute_digest(out)}\n"
+        digest = f"{self._compute_digest(out)}\n"
         jit_stencils = out / "jit_stencils.h"
-        if (
-            not force
-            and jit_stencils.exists()
-            and jit_stencils.read_text().startswith(digest)
-        ):
-            return
+        jit_stencils_digest = out / "jit_stencils.h.digest"
+
+        if not force and jit_stencils_digest.exists() and jit_stencils.exists():
+            if jit_stencils_digest.read_text() == digest:
+                return
+
+        # We need to ignore the version number for Darwin targets
+        target = self.triple
+        darwin_index = target.find("-darwin")
+        if darwin_index != -1:
+            target = self.triple[: darwin_index + len("-darwin")]
+
+        jit_stencils = TOOLS_JIT_STENCILS / f"{target}.h"
         stencil_groups = asyncio.run(self._build_stencils())
-        jit_stencils_new = out / "jit_stencils.h.new"
+        jit_stencils_new = TOOLS_JIT_STENCILS / f"{target}.h.new"
         try:
-            with jit_stencils_new.open("w") as file:
-                file.write(digest)
-                if comment:
-                    file.write(f"// {comment}\n")
-                file.write("\n")
+            with jit_stencils_new.open("w", newline="\n") as file:
                 for line in _writer.dump(stencil_groups, self.known_symbols):
                     file.write(f"{line}\n")
             try:
                 jit_stencils_new.replace(jit_stencils)
+                shutil.copy(jit_stencils, out / "jit_stencils.h")
             except FileNotFoundError:
                 # another process probably already moved the file
                 if not jit_stencils.is_file():
                     raise
         finally:
             jit_stencils_new.unlink(missing_ok=True)
+            jit_stencils_digest.write_text(digest)
 
 
 class _COFF(
