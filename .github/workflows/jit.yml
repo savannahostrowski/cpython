@@ -68,7 +68,7 @@ jobs:
           - true
           - false
         llvm:
-          - 19
+          - 20
         include:
           - target: i686-pc-windows-msvc/msvc
             architecture: Win32
