@@ -25,7 +25,6 @@ TOOLS_JIT_BUILD = pathlib.Path(__file__).resolve()
 TOOLS_JIT = TOOLS_JIT_BUILD.parent
 TOOLS = TOOLS_JIT.parent
 CPYTHON = TOOLS.parent
-EXTERNALS = CPYTHON / "externals"
 PYTHON_EXECUTOR_CASES_C_H = CPYTHON / "Python" / "executor_cases.c.h"
 TOOLS_JIT_TEMPLATE_C = TOOLS_JIT / "template.c"
 
@@ -161,10 +160,6 @@ class _Target(typing.Generic[_S, _R]):
             "-fno-asynchronous-unwind-tables",
             # Don't call built-in functions that we can't find or patch:
             "-fno-builtin",
-            # Emit relaxable 64-bit calls/jumps, so we don't have to worry about
-            # about emitting in-range trampolines for out-of-range targets.
-            # We can probably remove this and emit trampolines in the future:
-            "-fno-plt",
             # Don't call stack-smashing canaries that we can't find or patch:
             "-fno-stack-protector",
             "-std=c11",
@@ -565,31 +560,32 @@ def get_target(host: str) -> _COFF32 | _COFF64 | _ELF | _MachO:
         host = "aarch64-unknown-linux-gnu"
         condition = "defined(__aarch64__) && defined(__linux__)"
         # -mno-outline-atomics: Keep intrinsics from being emitted.
-        args = ["-fpic", "-mno-outline-atomics"]
+        args = ["-fpic", "-mno-outline-atomics", "-fno-plt"]
         optimizer = _optimizers.OptimizerAArch64
         target = _ELF(host, condition, args=args, optimizer=optimizer)
     elif re.fullmatch(r"i686-pc-windows-msvc", host):
         host = "i686-pc-windows-msvc"
         condition = "defined(_M_IX86)"
         # -Wno-ignored-attributes: __attribute__((preserve_none)) is not supported here.
-        args = ["-DPy_NO_ENABLE_SHARED", "-Wno-ignored-attributes"]
+        args = ["-DPy_NO_ENABLE_SHARED", "-Wno-ignored-attributes", "-fno-plt"]
         optimizer = _optimizers.OptimizerX86
         target = _COFF32(host, condition, args=args, optimizer=optimizer)
     elif re.fullmatch(r"x86_64-apple-darwin.*", host):
         host = "x86_64-apple-darwin"
         condition = "defined(__x86_64__) && defined(__APPLE__)"
+        args = ["-fno-pic", "-mcmodel=medium", "-mlarge-data-threshold=0", "-fno-plt"]
         optimizer = _optimizers.OptimizerX86
         target = _MachO(host, condition, optimizer=optimizer)
     elif re.fullmatch(r"x86_64-pc-windows-msvc", host):
         host = "x86_64-pc-windows-msvc"
         condition = "defined(_M_X64)"
-        args = ["-fms-runtime-lib=dll"]
+        args = ["-fms-runtime-lib=dll", "-fno-plt"]
         optimizer = _optimizers.OptimizerX86
         target = _COFF64(host, condition, args=args, optimizer=optimizer)
     elif re.fullmatch(r"x86_64-.*-linux-gnu", host):
         host = "x86_64-unknown-linux-gnu"
         condition = "defined(__x86_64__) && defined(__linux__)"
-        args = ["-fno-pic", "-mcmodel=medium", "-mlarge-data-threshold=0"]
+        args = ["-fno-pic", "-mcmodel=medium", "-mlarge-data-threshold=0", "-fno-plt"]
         optimizer = _optimizers.OptimizerX86
         target = _ELF(host, condition, args=args, optimizer=optimizer)
     else:
