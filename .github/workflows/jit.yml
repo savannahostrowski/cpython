@@ -1,15 +1,7 @@
 name: JIT
 on:
   pull_request:
-    paths:
-      - '**jit**'
-      - 'Python/bytecodes.c'
-      - 'Python/optimizer*.c'
-      - 'Python/executor_cases.c.h'
-      - 'Python/optimizer_cases.c.h'
-      - '!Python/perf_jit_trampoline.c'
-      - '!**/*.md'
-      - '!**/*.ini'
+    types: [opened, synchronize, reopened, labeled]
   push:
     paths:
       - '**jit**'
@@ -33,8 +25,49 @@ env:
   FORCE_COLOR: 1
 
 jobs:
+  check:
+    name: Check if JIT tests should run
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: check
+        run: |
+          # Always run for push/workflow_dispatch (paths filter already applied for push)
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Run if topic-JIT label is present
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'topic-JIT') }}" == "true" ]]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Check if JIT-related files changed
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          # Check against JIT paths (excluding negated patterns)
+          JIT_FILES=$(echo "$CHANGED_FILES" | grep -E '(jit|Python/bytecodes\.c|Python/optimizer.*\.c|Python/executor_cases\.c\.h|Python/optimizer_cases\.c\.h)' | grep -vE '(perf_jit_trampoline\.c|\.md$|\.ini$)' || true)
+          if [[ -n "$JIT_FILES" ]]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "should-run=false" >> $GITHUB_OUTPUT
+
   interpreter:
     name: Interpreter (Debug)
+    needs: check
+    if: needs.check.outputs.should-run == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
