@@ -226,6 +226,15 @@ class HeaderWidget(Widget):
             (f"{refresh_hz:.1f}Hz", self.colors["cyan"]),
         ]
 
+        # Add stack filter info if active
+        stack_filter = getattr(self.collector, 'stack_filter', None)
+        if stack_filter:
+            header_parts.extend([
+                (" │ ", curses.A_DIM),
+                ("Filter: ", curses.A_BOLD),
+                (f"{stack_filter}", self.colors["yellow"]),
+            ])
+
         col = 0
         for text, attr in header_parts:
             if col < width - 1:
@@ -262,10 +271,21 @@ class HeaderWidget(Widget):
             self.colors["cyan"],
         )
         col += 8
-        self.add_str(
-            line, col, f" total ({sample_rate:>7.1f}/s) ", curses.A_NORMAL
-        )
-        col += 23
+
+        # Show dropped count if stack filter is active
+        stack_filtered = getattr(self.collector, 'stack_filtered_samples', 0)
+        if stack_filtered > 0:
+            self.add_str(line, col, f" total ", curses.A_NORMAL)
+            col += 7
+            self.add_str(line, col, f"({stack_filtered} dropped)", self.colors["yellow"])
+            col += len(f"({stack_filtered} dropped)")
+            self.add_str(line, col, f" ({sample_rate:>7.1f}/s) ", curses.A_NORMAL)
+            col += 14
+        else:
+            self.add_str(
+                line, col, f" total ({sample_rate:>7.1f}/s) ", curses.A_NORMAL
+            )
+            col += 23
 
         # Draw sample rate bar
         target_rate = (

@@ -14,11 +14,17 @@ from .string_table import StringTable
 
 
 class StackTraceCollector(Collector):
-    def __init__(self, sample_interval_usec, *, skip_idle=False):
+    def __init__(self, sample_interval_usec, *, skip_idle=False, stack_filter=None):
+        super().__init__(stack_filter=stack_filter)
         self.sample_interval_usec = sample_interval_usec
         self.skip_idle = skip_idle
 
     def collect(self, stack_frames, skip_idle=False):
+        # Check stack filter - discard entire sample if no frames match
+        if self.stack_filter and not self._stack_matches_filter(stack_frames):
+            self.stack_filtered_samples += 1
+            return
+
         if stack_frames and hasattr(stack_frames[0], "awaited_by"):
             # Async-aware mode: process async task frames
             for frames, thread_id, task_id in self._iter_async_frames(stack_frames):

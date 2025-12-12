@@ -62,7 +62,8 @@ STACKWALK_DISABLED = 0
 
 
 class GeckoCollector(Collector):
-    def __init__(self, sample_interval_usec, *, skip_idle=False, opcodes=False):
+    def __init__(self, sample_interval_usec, *, skip_idle=False, opcodes=False, stack_filter=None):
+        super().__init__(stack_filter=stack_filter)
         self.sample_interval_usec = sample_interval_usec
         self.skip_idle = skip_idle
         self.opcodes_enabled = opcodes
@@ -140,6 +141,11 @@ class GeckoCollector(Collector):
 
     def collect(self, stack_frames):
         """Collect a sample from stack frames."""
+        # Check stack filter - discard entire sample if no frames match
+        if self.stack_filter and not self._stack_matches_filter(stack_frames):
+            self.stack_filtered_samples += 1
+            return
+
         current_time = (time.time() * 1000) - self.start_time
 
         # Update interval calculation

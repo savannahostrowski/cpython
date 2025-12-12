@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from .constants import (
     DEFAULT_LOCATION,
@@ -43,6 +44,18 @@ def extract_lineno(location):
     return location[0]
 
 class Collector(ABC):
+    def __init__(self, stack_filter=None):
+        """Initialize collector.
+
+        Args:
+            stack_filter: Optional regex pattern to filter stacks. Only samples where
+                         at least one frame matches the pattern (case-insensitive match
+                         on filename or function name) will be collected.
+        """
+        self.stack_filter = stack_filter
+        self.stack_filter_regex = re.compile(stack_filter, re.IGNORECASE) if stack_filter else None
+        self.stack_filtered_samples = 0
+
     @abstractmethod
     def collect(self, stack_frames):
         """Collect profiling data from stack frames."""
@@ -53,6 +66,25 @@ class Collector(ABC):
     @abstractmethod
     def export(self, filename):
         """Export collected data to a file."""
+
+    def _stack_matches_filter(self, stack_frames):
+        """Return True if any frame in the stack matches the stack_filter regex.
+
+        Args:
+            stack_frames: List of interpreter_info objects containing thread info
+
+        Returns:
+            bool: True if any frame matches, False otherwise
+        """
+        if not self.stack_filter_regex:
+            return True
+        for interpreter_info in stack_frames:
+            for thread_info in interpreter_info.threads:
+                for frame in thread_info.frame_info:
+                    if self.stack_filter_regex.search(frame.funcname) or \
+                       self.stack_filter_regex.search(frame.filename):
+                        return True
+        return False
 
     def _iter_all_frames(self, stack_frames, skip_idle=False):
         for interpreter_info in stack_frames:

@@ -6,7 +6,8 @@ from .collector import Collector, extract_lineno
 
 
 class PstatsCollector(Collector):
-    def __init__(self, sample_interval_usec, *, skip_idle=False):
+    def __init__(self, sample_interval_usec, *, skip_idle=False, stack_filter=None):
+        super().__init__(stack_filter=stack_filter)
         self.result = collections.defaultdict(
             lambda: dict(total_rec_calls=0, direct_calls=0, cumulative_calls=0)
         )
@@ -52,6 +53,11 @@ class PstatsCollector(Collector):
             self.callers[callee][caller] += 1
 
     def collect(self, stack_frames):
+        # Check stack filter - discard entire sample if no frames match
+        if self.stack_filter and not self._stack_matches_filter(stack_frames):
+            self.stack_filtered_samples += 1
+            return
+
         if stack_frames and hasattr(stack_frames[0], "awaited_by"):
             # Async frame processing
             for frames, thread_id, task_id in self._iter_async_frames(stack_frames):
