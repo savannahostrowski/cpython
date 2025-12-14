@@ -256,13 +256,12 @@ def _add_sampling_options(parser):
         help="Enable async-aware profiling (uses task-based stack reconstruction)",
     )
     sampling_group.add_argument(
-        "--stack-filter",
+        "--filter",
         type=str,
         default=None,
-        metavar="REGEX",
-        help="Only collect samples where at least one frame's function name or "
-        "filename matches REGEX (case-insensitive). Use '^func$' for exact match, "
-        "'func1|func2' for alternatives. Useful for profiling specific endpoints.",
+        metavar="PATTERN",
+        help="Only collect samples where at least one frame matches PATTERN. "
+        "Supports: simple text matching, file paths, and pytest-style patterns.",
     )
 
 
@@ -671,7 +670,7 @@ def _handle_attach(args):
     )
 
     # Create the appropriate collector
-    collector = _create_collector(args.format, args.interval, skip_idle, args.opcodes, args.stack_filter)
+    collector = _create_collector(args.format, args.interval, skip_idle, args.opcodes, args.filter)
 
     # Sample the process
     collector = sample(
@@ -742,7 +741,7 @@ def _handle_run(args):
     )
 
     # Create the appropriate collector
-    collector = _create_collector(args.format, args.interval, skip_idle, args.opcodes, args.stack_filter)
+    collector = _create_collector(args.format, args.interval, skip_idle, args.opcodes, args.filter)
 
     # Profile the subprocess
     try:
@@ -789,7 +788,7 @@ def _handle_live_attach(args, pid):
         mode=mode,
         opcodes=args.opcodes,
         async_aware=args.async_mode if args.async_aware else None,
-        stack_filter=args.stack_filter,
+        stack_filter=args.filter,
     )
 
     # Sample in live mode
@@ -836,7 +835,7 @@ def _handle_live_run(args):
         mode=mode,
         opcodes=args.opcodes,
         async_aware=args.async_mode if args.async_aware else None,
-        stack_filter=args.stack_filter,
+        stack_filter=args.filter,
     )
 
     # Profile the subprocess in live mode

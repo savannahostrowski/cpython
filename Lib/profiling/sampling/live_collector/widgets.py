@@ -272,13 +272,13 @@ class HeaderWidget(Widget):
         )
         col += 8
 
-        # Show dropped count if stack filter is active
+        # Show filtered count if stack filter is active
         stack_filtered = getattr(self.collector, 'stack_filtered_samples', 0)
         if stack_filtered > 0:
             self.add_str(line, col, f" total ", curses.A_NORMAL)
             col += 7
-            self.add_str(line, col, f"({stack_filtered} dropped)", self.colors["yellow"])
-            col += len(f"({stack_filtered} dropped)")
+            self.add_str(line, col, f"({stack_filtered} filtered)", self.colors["yellow"])
+            col += len(f"({stack_filtered} filtered)")
             self.add_str(line, col, f" ({sample_rate:>7.1f}/s) ", curses.A_NORMAL)
             col += 14
         else:

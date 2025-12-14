@@ -442,6 +442,30 @@ working correctly and that sufficient samples are being collected. See
 :ref:`sampling-efficiency` for details on interpreting these metrics.
 
 
+Stack filtering
+---------------
+
+The :option:`--filter` option restricts profiling to samples where at least one
+frame matches a pattern. Samples without any matching frames are discarded
+entirely, focusing the profile on specific code paths::
+
+   python -m profiling.sampling run --filter=myapp script.py
+
+Patterns are matched case-insensitively against filenames and function names:
+
+- **Simple text** matches anywhere in the filename or function name:
+   python -m profiling.sampling run --filter='database' script.py
+   python -m profiling.sampling run --filter='handle_request' script.py
+
+- **File paths** match when the filename ends with the specified path:
+   python -m profiling.sampling run --filter='services/user_service.py' script.py
+
+- **Pytest-style patterns** use ``::`` separators to match file, class, and function combinations:
+   python -m profiling.sampling run --filter='api.py::UserView::get' script.py
+
+In live mode, the display shows how many samples were filtered, helping you
+verify that the filter is working as expected.
+
 .. _sampling-efficiency:
 
 Sampling efficiency

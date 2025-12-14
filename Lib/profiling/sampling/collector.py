@@ -1,4 +1,3 @@
-import re
 from abc import ABC, abstractmethod
 from .constants import (
     DEFAULT_LOCATION,
@@ -43,17 +42,80 @@ def extract_lineno(location):
         return 0
     return location[0]
 
+
+def compile_stack_filter(stack_filter):
+    """Compile a stack filter pattern into a matcher function.
+
+    Supported formats (case-insensitive):
+        - Simple text: matches anywhere in filename or function name
+        - File path (contains '/' or ends with '.py'): match end of filename
+        - Pytest-style (contains '::'):
+            - file.py::name
+            - file.py::Class::method (matched as 'Class.method' in function name)
+
+    The returned function accepts a frame-like object with `filename` and
+    `funcname` attributes and returns True if it matches.
+    """
+    if not stack_filter:
+        return None
+
+    pattern_lower = stack_filter.lower()
+
+    if '::' in pattern_lower:
+        parts = pattern_lower.split('::', 2)  # Limit split to handle extra ::
+        file_pat = parts[0]
+        if len(parts) == 2:
+            name_pat = parts[1]
+        else:
+            # file.py::Class::method -> look for 'Class.method' in funcname
+            name_pat = parts[1] + '.' + parts[2]
+
+        def match(frame):
+            filename = getattr(frame, 'filename', None)
+            if not filename or not filename.lower().endswith(file_pat):
+                return False
+            funcname = getattr(frame, 'funcname', None)
+            return funcname is not None and name_pat in funcname.lower()
+
+        return match
+
+    if '/' in pattern_lower or pattern_lower.endswith('.py'):
+        file_pat = pattern_lower
+
+        def match(frame):
+            filename = getattr(frame, 'filename', None)
+            return filename is not None and filename.lower().endswith(file_pat)
+
+        return match
+
+    # Simple text - check filename first, only check funcname if needed
+    simple_pat = pattern_lower
+
+    def match(frame):
+        filename = getattr(frame, 'filename', None)
+        if filename is not None and simple_pat in filename.lower():
+            return True
+        funcname = getattr(frame, 'funcname', None)
+        return funcname is not None and simple_pat in funcname.lower()
+
+    return match
+
+
 class Collector(ABC):
     def __init__(self, stack_filter=None):
         """Initialize collector.
 
         Args:
-            stack_filter: Optional regex pattern to filter stacks. Only samples where
-                         at least one frame matches the pattern (case-insensitive match
-                         on filename or function name) will be collected.
+            stack_filter: Optional filter pattern for stacks. Supports:
+                - Simple text matching (file or function name)
+                - File path (e.g. path/to/file.py)
+                - Pytest-style:
+                    - file.py::ClassName
+                    - file.py::function_name
+                    - file.py::ClassName::method_name
         """
         self.stack_filter = stack_filter
-        self.stack_filter_regex = re.compile(stack_filter, re.IGNORECASE) if stack_filter else None
+        self._stack_filter_match = compile_stack_filter(stack_filter)
         self.stack_filtered_samples = 0
 
     @abstractmethod
@@ -67,8 +129,21 @@ class Collector(ABC):
     def export(self, filename):
         """Export collected data to a file."""
 
+    def _frame_matches_filter(self, frame):
+        """Check if a single frame matches the stack filter.
+
+        Args:
+            frame: A FrameInfo object with filename and funcname attributes
+
+        Returns:
+            bool: True if frame matches, False otherwise
+        """
+        if self._stack_filter_match is None:
+            return True
+        return self._stack_filter_match(frame)
+
     def _stack_matches_filter(self, stack_frames):
-        """Return True if any frame in the stack matches the stack_filter regex.
+        """Return True if any frame in the stack matches the stack filter.
 
         Args:
             stack_frames: List of interpreter_info objects containing thread info
@@ -76,13 +151,12 @@ class Collector(ABC):
         Returns:
             bool: True if any frame matches, False otherwise
         """
-        if not self.stack_filter_regex:
+        if self._stack_filter_match is None:
             return True
         for interpreter_info in stack_frames:
             for thread_info in interpreter_info.threads:
                 for frame in thread_info.frame_info:
-                    if self.stack_filter_regex.search(frame.funcname) or \
-                       self.stack_filter_regex.search(frame.filename):
+                    if self._stack_filter_match(frame):
                         return True
         return False
 

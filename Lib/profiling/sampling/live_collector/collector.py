@@ -5,14 +5,13 @@ import contextlib
 import curses
 from dataclasses import dataclass, field
 import os
-import re
 import site
 import sys
 import sysconfig
 import time
 import _colorize
 
-from ..collector import Collector, extract_lineno
+from ..collector import Collector, extract_lineno, compile_stack_filter
 from ..constants import (
     THREAD_STATUS_HAS_GIL,
     THREAD_STATUS_ON_CPU,
@@ -152,7 +151,7 @@ class LiveStatsCollector(Collector):
         self.mode = mode  # Profiling mode
         self.async_aware = async_aware  # Async tracing mode
         self.stack_filter = stack_filter  # Stack frame filter pattern
-        self.stack_filter_regex = re.compile(stack_filter, re.IGNORECASE) if stack_filter else None
+        self._stack_filter_match = compile_stack_filter(stack_filter)
         # Pre-select frame iterator method to avoid per-call dispatch overhead
         self._get_frame_iterator = self._get_async_frame_iterator if async_aware else self._get_sync_frame_iterator
         self._saved_stdout = None
@@ -350,15 +349,20 @@ class LiveStatsCollector(Collector):
         for frames, thread_id, task_id in self._iter_async_frames(stack_frames):
             yield frames, thread_id
     
+    def _frame_matches_filter(self, frame):
+        """Check if a single frame matches the stack filter."""
+        if self._stack_filter_match is None:
+            return True
+        return self._stack_filter_match(frame)
+
     def _stack_matches_filter(self, stack_frames):
-        """Return True if any frame in the stack matches the stack_filter regex."""
-        if not self.stack_filter_regex:
+        """Return True if any frame in the stack matches the stack filter."""
+        if self._stack_filter_match is None:
             return True
         for interpreter_info in stack_frames:
             for thread_info in interpreter_info.threads:
                 for frame in thread_info.frame_info:
-                    if self.stack_filter_regex.search(frame.funcname) or \
-                       self.stack_filter_regex.search(frame.filename):
+                    if self._stack_filter_match(frame):
                         return True
         return False
 
