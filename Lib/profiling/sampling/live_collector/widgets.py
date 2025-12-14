@@ -227,12 +227,12 @@ class HeaderWidget(Widget):
         ]
 
         # Add stack filter info if active
-        stack_filter = getattr(self.collector, 'stack_filter', None)
-        if stack_filter:
+        filter = getattr(self.collector, 'filter', None)
+        if filter:
             header_parts.extend([
                 (" │ ", curses.A_DIM),
                 ("Filter: ", curses.A_BOLD),
-                (f"{stack_filter}", self.colors["yellow"]),
+                (f"{filter}", self.colors["yellow"]),
             ])
 
         col = 0
@@ -272,13 +272,13 @@ class HeaderWidget(Widget):
         )
         col += 8
 
-        # Show filtered count if stack filter is active
-        stack_filtered = getattr(self.collector, 'stack_filtered_samples', 0)
-        if stack_filtered > 0:
+        # Show filtered count if filter is active
+        filtered = getattr(self.collector, 'filtered_samples', 0)
+        if filtered > 0:
             self.add_str(line, col, f" total ", curses.A_NORMAL)
             col += 7
-            self.add_str(line, col, f"({stack_filtered} filtered)", self.colors["yellow"])
-            col += len(f"({stack_filtered} filtered)")
+            self.add_str(line, col, f"({filtered} filtered)", self.colors["yellow"])
+            col += len(f"({filtered} filtered)")
             self.add_str(line, col, f" ({sample_rate:>7.1f}/s) ", curses.A_NORMAL)
             col += 14
         else:

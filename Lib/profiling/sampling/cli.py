@@ -381,7 +381,7 @@ def _sort_to_mode(sort_choice):
     return sort_map.get(sort_choice, SORT_MODE_NSAMPLES)
 
 
-def _create_collector(format_type, interval, skip_idle, opcodes=False, stack_filter=None):
+def _create_collector(format_type, interval, skip_idle, opcodes=False, filter=None):
     """Create the appropriate collector based on format type.
 
     Args:
@@ -390,7 +390,7 @@ def _create_collector(format_type, interval, skip_idle, opcodes=False, stack_fil
         skip_idle: Whether to skip idle samples
         opcodes: Whether to collect opcode information (only used by gecko format
                  for creating interval markers in Firefox Profiler)
-        stack_filter: Optional pattern to filter stacks (case-insensitive substring match)
+        filter: Optional pattern to filter stacks
 
     Returns:
         A collector instance of the appropriate type
@@ -403,9 +403,9 @@ def _create_collector(format_type, interval, skip_idle, opcodes=False, stack_fil
     # and is the only format that uses opcodes for interval markers
     if format_type == "gecko":
         skip_idle = False
-        return collector_class(interval, skip_idle=skip_idle, opcodes=opcodes, stack_filter=stack_filter)
+        return collector_class(interval, skip_idle=skip_idle, opcodes=opcodes, filter=filter)
 
-    return collector_class(interval, skip_idle=skip_idle, stack_filter=stack_filter)
+    return collector_class(interval, skip_idle=skip_idle, filter=filter)
 
 
 def _generate_output_filename(format_type, pid):
@@ -788,7 +788,7 @@ def _handle_live_attach(args, pid):
         mode=mode,
         opcodes=args.opcodes,
         async_aware=args.async_mode if args.async_aware else None,
-        stack_filter=args.filter,
+        filter=args.filter,
     )
 
     # Sample in live mode
@@ -835,7 +835,7 @@ def _handle_live_run(args):
         mode=mode,
         opcodes=args.opcodes,
         async_aware=args.async_mode if args.async_aware else None,
-        stack_filter=args.filter,
+        filter=args.filter,
     )
 
     # Profile the subprocess in live mode

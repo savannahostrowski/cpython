@@ -43,7 +43,7 @@ def extract_lineno(location):
     return location[0]
 
 
-def compile_stack_filter(stack_filter):
+def compile_stack_filter(filter):
     """Compile a stack filter pattern into a matcher function.
 
     Supported formats (case-insensitive):
@@ -56,10 +56,10 @@ def compile_stack_filter(stack_filter):
     The returned function accepts a frame-like object with `filename` and
     `funcname` attributes and returns True if it matches.
     """
-    if not stack_filter:
+    if not filter:
         return None
 
-    pattern_lower = stack_filter.lower()
+    pattern_lower = filter.lower()
 
     if '::' in pattern_lower:
         parts = pattern_lower.split('::', 2)  # Limit split to handle extra ::
@@ -102,11 +102,11 @@ def compile_stack_filter(stack_filter):
 
 
 class Collector(ABC):
-    def __init__(self, stack_filter=None):
+    def __init__(self, filter=None):
         """Initialize collector.
 
         Args:
-            stack_filter: Optional filter pattern for stacks. Supports:
+            filter: Optional filter pattern for stacks. Supports:
                 - Simple text matching (file or function name)
                 - File path (e.g. path/to/file.py)
                 - Pytest-style:
@@ -114,9 +114,9 @@ class Collector(ABC):
                     - file.py::function_name
                     - file.py::ClassName::method_name
         """
-        self.stack_filter = stack_filter
-        self._stack_filter_match = compile_stack_filter(stack_filter)
-        self.stack_filtered_samples = 0
+        self.filter = filter
+        self._filter_match = compile_stack_filter(filter)
+        self.filtered_samples = 0
 
     @abstractmethod
     def collect(self, stack_frames):
@@ -138,9 +138,9 @@ class Collector(ABC):
         Returns:
             bool: True if frame matches, False otherwise
         """
-        if self._stack_filter_match is None:
+        if self._filter_match is None:
             return True
-        return self._stack_filter_match(frame)
+        return self._filter_match(frame)
 
     def _stack_matches_filter(self, stack_frames):
         """Return True if any frame in the stack matches the stack filter.
@@ -151,12 +151,12 @@ class Collector(ABC):
         Returns:
             bool: True if any frame matches, False otherwise
         """
-        if self._stack_filter_match is None:
+        if self._filter_match is None:
             return True
         for interpreter_info in stack_frames:
             for thread_info in interpreter_info.threads:
                 for frame in thread_info.frame_info:
-                    if self._stack_filter_match(frame):
+                    if self._filter_match(frame):
                         return True
         return False
 

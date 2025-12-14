@@ -115,7 +115,7 @@ class LiveStatsCollector(Collector):
         mode=None,
         opcodes=False,
         async_aware=None,
-        stack_filter=None,
+        filter=None,
     ):
         """
         Initialize the live stats collector.
@@ -130,7 +130,7 @@ class LiveStatsCollector(Collector):
             mode: Profiling mode ('cpu', 'gil', etc.) - affects what stats are shown
             opcodes: Whether to show opcode panel (requires --opcodes flag)
             async_aware: Async tracing mode - None (sync only), "all" or "running"
-            stack_filter: Function to filter stack frames
+            filter: Function to filter stack frames
         """
         self.result = collections.defaultdict(
             lambda: dict(total_rec_calls=0, direct_calls=0, cumulative_calls=0)
@@ -150,8 +150,8 @@ class LiveStatsCollector(Collector):
         self.pid = pid
         self.mode = mode  # Profiling mode
         self.async_aware = async_aware  # Async tracing mode
-        self.stack_filter = stack_filter  # Stack frame filter pattern
-        self._stack_filter_match = compile_stack_filter(stack_filter)
+        self.filter = filter  # Stack frame filter pattern
+        self._filter_match = compile_stack_filter(filter)
         # Pre-select frame iterator method to avoid per-call dispatch overhead
         self._get_frame_iterator = self._get_async_frame_iterator if async_aware else self._get_sync_frame_iterator
         self._saved_stdout = None
@@ -161,7 +161,7 @@ class LiveStatsCollector(Collector):
         self.max_sample_rate = 0  # Track maximum sample rate seen
         self.successful_samples = 0  # Track samples that captured frames
         self.failed_samples = 0  # Track samples that failed to capture frames
-        self.stack_filtered_samples = 0  # Track samples filtered out by stack_filter
+        self.filtered_samples = 0  # Track samples filtered out by filter
         self.display_update_interval = DISPLAY_UPDATE_INTERVAL  # Instance variable for display refresh rate
 
         # Thread status statistics (bit flags)
@@ -348,23 +348,6 @@ class LiveStatsCollector(Collector):
         """Iterator for async frames, yielding (frames, thread_id) tuples."""
         for frames, thread_id, task_id in self._iter_async_frames(stack_frames):
             yield frames, thread_id
-    
-    def _frame_matches_filter(self, frame):
-        """Check if a single frame matches the stack filter."""
-        if self._stack_filter_match is None:
-            return True
-        return self._stack_filter_match(frame)
-
-    def _stack_matches_filter(self, stack_frames):
-        """Return True if any frame in the stack matches the stack filter."""
-        if self._stack_filter_match is None:
-            return True
-        for interpreter_info in stack_frames:
-            for thread_info in interpreter_info.threads:
-                for frame in thread_info.frame_info:
-                    if self._stack_filter_match(frame):
-                        return True
-        return False
 
     def collect_failed_sample(self):
         self.failed_samples += 1
@@ -376,9 +359,9 @@ class LiveStatsCollector(Collector):
             self.start_time = time.perf_counter()
             self._last_display_update = self.start_time
 
-        # Check stack filter - discard entire sample if no frames match
-        if self.stack_filter and not self._stack_matches_filter(stack_frames):
-            self.stack_filtered_samples += 1
+        # Check filter - discard entire sample if no frames match
+        if self.filter and not self._stack_matches_filter(stack_frames):
+            self.filtered_samples += 1
             self.total_samples += 1
             return
 

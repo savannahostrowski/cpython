@@ -14,7 +14,7 @@ try:
         FlamegraphCollector,
     )
     from profiling.sampling.gecko_collector import GeckoCollector
-    from profiling.sampling.collector import extract_lineno, normalize_location
+    from profiling.sampling.collector import extract_lineno, normalize_location, compile_stack_filter
     from profiling.sampling.opcode_utils import get_opcode_info, format_opcode
     from profiling.sampling.constants import (
         PROFILING_MODE_WALL,
@@ -1825,3 +1825,112 @@ class TestCollectorFrameFormat(unittest.TestCase):
         thread = profile["threads"][0]
         # Should have recorded 3 functions
         self.assertEqual(thread["funcTable"]["length"], 3)
+
+
+class TestStackFiltering(unittest.TestCase):
+    """Tests for compile_stack_filter and collector filtering."""
+
+    def test_compile_stack_filter_patterns(self):
+        """Test compile_stack_filter with various pattern types."""
+        from types import SimpleNamespace
+        make_frame = lambda f, fn: SimpleNamespace(filename=f, funcname=fn)
+
+        # None/empty returns None
+        self.assertIsNone(compile_stack_filter(None))
+        self.assertIsNone(compile_stack_filter(""))
+
+        # Simple text matches filename or funcname
+        m = compile_stack_filter("database")
+        self.assertTrue(m(make_frame("/app/database.py", "query")))
+        self.assertTrue(m(make_frame("/app/views.py", "database_query")))
+        self.assertFalse(m(make_frame("/app/views.py", "render")))
+
+        # File path uses endswith
+        m = compile_stack_filter("models.py")
+        self.assertTrue(m(make_frame("/app/models.py", "save")))
+        self.assertFalse(m(make_frame("/app/models_backup.py", "save")))
+
+        # Pytest-style file::func
+        m = compile_stack_filter("api.py::get_users")
+        self.assertTrue(m(make_frame("/app/api.py", "get_users")))
+        self.assertFalse(m(make_frame("/app/api.py", "delete_users")))
+
+        # Pytest-style file::Class::method
+        m = compile_stack_filter("api.py::UserView::get")
+        self.assertTrue(m(make_frame("/app/api.py", "UserView.get")))
+        self.assertFalse(m(make_frame("/app/api.py", "UserView.post")))
+
+        # Handles None attributes
+        m = compile_stack_filter("test")
+        self.assertTrue(m(make_frame(None, "test_func")))
+        self.assertTrue(m(make_frame("/test.py", None)))
+        self.assertFalse(m(make_frame(None, None)))
+
+    def test_pstats_collector_filter(self):
+        """Test PstatsCollector with filter."""
+        collector = PstatsCollector(sample_interval_usec=1000, filter="target")
+
+        # Matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("a.py", 1, "target_func")])])
+        ])
+        self.assertEqual(collector.filtered_samples, 0)
+        self.assertIn(("a.py", 1, "target_func"), collector.result)
+
+        # Non-matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("b.py", 2, "other")])])
+        ])
+        self.assertEqual(collector.filtered_samples, 1)
+        self.assertNotIn(("b.py", 2, "other"), collector.result)
+
+    def test_flamegraph_collector_filter(self):
+        """Test FlamegraphCollector with filter."""
+        collector = FlamegraphCollector(sample_interval_usec=1000, filter="target")
+
+        # Matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("a.py", 1, "target_func")], status=THREAD_STATUS_HAS_GIL)])
+        ])
+        self.assertEqual(collector.filtered_samples, 0)
+
+        # Non-matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("b.py", 2, "other")], status=THREAD_STATUS_HAS_GIL)])
+        ])
+        self.assertEqual(collector.filtered_samples, 1)
+
+    def test_gecko_collector_filter(self):
+        """Test GeckoCollector with filter."""
+        collector = GeckoCollector(sample_interval_usec=1000, filter="target")
+
+        # Matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("a.py", 1, "target_func")])])
+        ])
+        self.assertEqual(collector.filtered_samples, 0)
+        self.assertEqual(len(collector.threads), 1)
+
+        # Non-matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("b.py", 2, "other")])])
+        ])
+        self.assertEqual(collector.filtered_samples, 1)
+
+    def test_collapsed_stack_collector_filter(self):
+        """Test CollapsedStackCollector with filter."""
+        collector = CollapsedStackCollector(sample_interval_usec=1000, filter="target")
+
+        # Matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("a.py", 1, "target_func")])])
+        ])
+        self.assertEqual(collector.filtered_samples, 0)
+        self.assertEqual(len(collector.stack_counter), 1)
+
+        # Non-matching sample
+        collector.collect([
+            MockInterpreterInfo(0, [MockThreadInfo(1, [MockFrameInfo("b.py", 2, "other")])])
+        ])
+        self.assertEqual(collector.filtered_samples, 1)
+        self.assertEqual(len(collector.stack_counter), 1)  # Still just the one matching
