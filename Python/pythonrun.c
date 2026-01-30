@@ -31,6 +31,7 @@
 #include "marshal.h"              // PyMarshal_ReadLongFromFile()
 
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef MS_WINDOWS
 #  include "malloc.h"             // alloca()
@@ -688,6 +689,7 @@ static void
 _PyErr_PrintEx(PyThreadState *tstate, int set_sys_last_vars)
 {
     PyObject *typ = NULL, *tb = NULL, *hook = NULL;
+    PyObject *hooks_list = NULL;
     handle_system_exit();
 
     PyObject *exc = _PyErr_GetRaisedException(tstate);
@@ -716,6 +718,31 @@ _PyErr_PrintEx(PyThreadState *tstate, int set_sys_last_vars)
             _PyErr_Clear(tstate);
         }
     }
+
+    if(PySys_GetOptionalAttr(&_Py_ID(excepthooks), &hooks_list) < 0) {
+        PyErr_Clear();
+    }
+    if (hooks_list != NULL && PyList_Check(hooks_list)) {
+        Py_ssize_t nhooks = PyList_GET_SIZE(hooks_list);
+        for (Py_ssize_t i = 0; i < nhooks; i++) {
+            PyObject *h = PyList_GET_ITEM(hooks_list, i);
+            PyObject* args[3] = {typ, exc, tb};
+            PyObject *result = PyObject_Vectorcall(h, args, 3, NULL);
+            if (result == NULL) {
+                handle_system_exit(); 
+                PyObject *exc2 = _PyErr_GetRaisedException(tstate);
+                fflush(stdout);
+                PySys_WriteStderr("Error in sys.excepthooks[%zd]:\n", i);
+                PyErr_DisplayException(exc2);
+                Py_DECREF(exc2);
+            }
+            else {
+                Py_DECREF(result);
+            }
+        }
+    }
+    Py_XDECREF(hooks_list);
+
     if (PySys_GetOptionalAttr(&_Py_ID(excepthook), &hook) < 0) {
         PyErr_Clear();
     }

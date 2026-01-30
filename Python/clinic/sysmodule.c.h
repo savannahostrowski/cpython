@@ -156,6 +156,24 @@ exit:
     return return_value;
 }
 
+PyDoc_STRVAR(sys_add_excepthook__doc__,
+"add_excepthook($module, hook, /)\n"
+"--\n"
+"\n"
+"Register an exception hook callback.");
+
+#define SYS_ADD_EXCEPTHOOK_METHODDEF    \
+    {"add_excepthook", (PyCFunction)sys_add_excepthook, METH_O, sys_add_excepthook__doc__},
+
+PyDoc_STRVAR(sys_remove_excepthook__doc__,
+"remove_excepthook($module, hook, /)\n"
+"--\n"
+"\n"
+"Unregister an exception hook callback.");
+
+#define SYS_REMOVE_EXCEPTHOOK_METHODDEF    \
+    {"remove_excepthook", (PyCFunction)sys_remove_excepthook, METH_O, sys_remove_excepthook__doc__},
+
 PyDoc_STRVAR(sys_exception__doc__,
 "exception($module, /)\n"
 "--\n"
@@ -1947,4 +1965,4 @@ exit:
 #ifndef SYS_GETANDROIDAPILEVEL_METHODDEF
     #define SYS_GETANDROIDAPILEVEL_METHODDEF
 #endif /* !defined(SYS_GETANDROIDAPILEVEL_METHODDEF) */
-/*[clinic end generated code: output=5f7d84c5bf00d557 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=99ebd1faa73f9be0 input=a9049054013a1b77]*/

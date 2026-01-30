@@ -833,6 +833,66 @@ sys_excepthook_impl(PyObject *module, PyObject *exctype, PyObject *value,
 
 
 /*[clinic input]
+sys.add_excepthook
+
+    hook: object
+    /   
+
+Register an exception hook callback.
+[clinic start generated code]*/
+
+static PyObject *
+sys_add_excepthook(PyObject *module, PyObject *hook)
+/*[clinic end generated code: output=59a2dc6ff1b55f2c input=1f4cb2b544356cb4]*/
+{
+    // Get sys.excepthooks list
+    PyObject *hooks;
+    if (PySys_GetOptionalAttr(&_Py_ID(excepthooks), &hooks) < 0) {
+        return NULL;
+    }
+    // Append hook to the list
+    if (PyList_Append(hooks, hook) < 0) {
+        Py_DECREF(hooks);
+        return NULL;
+    }
+
+    Py_DECREF(hooks);
+    Py_RETURN_NONE;
+}
+
+/*[clinic input]
+sys.remove_excepthook
+
+    hook: object
+    /
+    
+Unregister an exception hook callback.
+[clinic start generated code]*/
+
+static PyObject *
+sys_remove_excepthook(PyObject *module, PyObject *hook)
+/*[clinic end generated code: output=85b8368405118404 input=f62ec3469930d9bc]*/
+{
+    // Get sys.excepthooks list
+    PyObject *hooks;
+    if (PySys_GetOptionalAttr(&_Py_ID(excepthooks), &hooks) < 0) {
+        return NULL;
+    }
+    // Remove hook from the list
+    Py_ssize_t index = PySequence_Index(hooks, hook);
+    if (index < 0) {
+        Py_DECREF(hooks);
+        return NULL;
+    }
+    if (PySequence_DelItem(hooks, index) < 0) {
+        Py_DECREF(hooks);
+        return NULL;
+    } 
+    Py_DECREF(hooks);
+    Py_RETURN_NONE;
+}
+
+/*[clinic input]
 sys.exception
 
 Return the current exception.
@@ -2789,6 +2849,7 @@ PyAPI_FUNC(int) PyUnstable_CopyPerfMapFile(const char* parent_filename) {
 static PyMethodDef sys_methods[] = {
     /* Might as well keep this in alphabetic order */
     SYS_ADDAUDITHOOK_METHODDEF
+    SYS_ADD_EXCEPTHOOK_METHODDEF
     SYS_AUDIT_METHODDEF
     {"breakpointhook", _PyCFunction_CAST(sys_breakpointhook),
      METH_FASTCALL | METH_KEYWORDS, breakpointhook_doc},
@@ -2807,6 +2868,7 @@ static PyMethodDef sys_methods[] = {
     SYS_GETUNICODEINTERNEDSIZE_METHODDEF
     SYS_GETFILESYSTEMENCODING_METHODDEF
     SYS_GETFILESYSTEMENCODEERRORS_METHODDEF
+    SYS_REMOVE_EXCEPTHOOK_METHODDEF
 #ifdef Py_TRACE_REFS
     {"getobjects", _Py_GetObjects, METH_VARARGS},
 #endif
@@ -3863,6 +3925,8 @@ _PySys_InitCore(PyThreadState *tstate, PyObject *sysdict)
     COPY_SYS_ATTR("__unraisablehook__", "unraisablehook");
 
 #undef COPY_SYS_ATTR
+
+    SET_SYS("excepthooks", PyList_New(0));
 
     SET_SYS_FROM_STRING("version", Py_GetVersion());
     SET_SYS("hexversion", PyLong_FromLong(PY_VERSION_HEX));
