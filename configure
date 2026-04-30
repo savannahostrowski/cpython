@@ -10158,9 +10158,9 @@ fi
 
 fi
 
-# Check for --with-frame-pointers
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for --with-frame-pointers" >&5
-printf %s "checking for --with-frame-pointers... " >&6; }
+# Check whether to build with frame pointers (PEP 831)
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to build with frame pointers" >&5
+printf %s "checking whether to build with frame pointers... " >&6; }
 
 # Check whether --with-frame-pointers was given.
 if test ${with_frame_pointers+y}
@@ -10177,7 +10177,7 @@ printf "%s\n" "$with_frame_pointers" >&6; }
 if test "x$ac_cv_gcc_compat" = xyes
 then :
 
-            frame_pointer_cflags=
+                    frame_pointer_cflags=
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -fno-omit-frame-pointer" >&5
 printf %s "checking whether C compiler accepts -fno-omit-frame-pointer... " >&6; }
 if test ${ax_cv_check_cflags__Werror__fno_omit_frame_pointer+y}
