@@ -2489,19 +2489,32 @@ then
   AX_CHECK_COMPILE_FLAG([-D_FORTIFY_SOURCE=3], [CFLAGS_NODIST="$CFLAGS_NODIST -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"], [AC_MSG_WARN([-D_FORTIFY_SOURCE=3 not supported])], [-Werror])
 fi
 
+# Check for --with-frame-pointers
+AC_MSG_CHECKING([for --with-frame-pointers])
+AC_ARG_WITH([frame-pointers],
+  [AS_HELP_STRING([--without-frame-pointers],
+                  [build without frame pointers (default is yes)])],
+  [],
+  [with_frame_pointers=yes])
+AC_MSG_RESULT([$with_frame_pointers])
+
 AS_VAR_IF([ac_cv_gcc_compat], [yes], [
-    dnl Keep frame pointers in CPython and stdlib objects so native profilers
-    dnl can unwind interpreter frames and generated trampolines without DWARF.
-    frame_pointer_cflags=
-    AX_CHECK_COMPILE_FLAG([-fno-omit-frame-pointer], [
-      frame_pointer_cflags="-fno-omit-frame-pointer"
-      AX_CHECK_COMPILE_FLAG([-mno-omit-leaf-frame-pointer], [
-        frame_pointer_cflags="$frame_pointer_cflags -mno-omit-leaf-frame-pointer"
+    AS_VAR_IF([with_frame_pointers], [yes], [
+      dnl Keep frame pointers in CPython, stdlib objects, and third-party
+      dnl extensions built against this Python, so native profilers can
+      dnl unwind interpreter frames and generated trampolines without DWARF.
+      dnl Use BASECFLAGS so the flags propagate to extensions via sysconfig.
+      frame_pointer_cflags=
+      AX_CHECK_COMPILE_FLAG([-fno-omit-frame-pointer], [
+        frame_pointer_cflags="-fno-omit-frame-pointer"
+        AX_CHECK_COMPILE_FLAG([-mno-omit-leaf-frame-pointer], [
+          frame_pointer_cflags="$frame_pointer_cflags -mno-omit-leaf-frame-pointer"
+        ], [], [-Werror])
       ], [], [-Werror])
-    ], [], [-Werror])
-    if test -n "$frame_pointer_cflags"; then
-      CFLAGS_NODIST="$frame_pointer_cflags $CFLAGS_NODIST"
-    fi
+      if test -n "$frame_pointer_cflags"; then
+        BASECFLAGS="$frame_pointer_cflags $BASECFLAGS"
+      fi
+    ])
 
     CFLAGS_NODIST="$CFLAGS_NODIST -std=c11"
 
