@@ -10177,11 +10177,8 @@ printf "%s\n" "$with_frame_pointers" >&6; }
 if test "x$ac_cv_gcc_compat" = xyes
 then :
 
-    if test "x$with_frame_pointers" = xyes
-then :
-
-                              frame_pointer_cflags=
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -fno-omit-frame-pointer" >&5
+            frame_pointer_cflags=
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -fno-omit-frame-pointer" >&5
 printf %s "checking whether C compiler accepts -fno-omit-frame-pointer... " >&6; }
 if test ${ax_cv_check_cflags__Werror__fno_omit_frame_pointer+y}
 then :
@@ -10217,8 +10214,8 @@ printf "%s\n" "$ax_cv_check_cflags__Werror__fno_omit_frame_pointer" >&6; }
 if test "x$ax_cv_check_cflags__Werror__fno_omit_frame_pointer" = xyes
 then :
 
-        frame_pointer_cflags="-fno-omit-frame-pointer"
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -mno-omit-leaf-frame-pointer" >&5
+      frame_pointer_cflags="-fno-omit-frame-pointer"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts -mno-omit-leaf-frame-pointer" >&5
 printf %s "checking whether C compiler accepts -mno-omit-leaf-frame-pointer... " >&6; }
 if test ${ax_cv_check_cflags__Werror__mno_omit_leaf_frame_pointer+y}
 then :
@@ -10254,7 +10251,7 @@ printf "%s\n" "$ax_cv_check_cflags__Werror__mno_omit_leaf_frame_pointer" >&6; }
 if test "x$ax_cv_check_cflags__Werror__mno_omit_leaf_frame_pointer" = xyes
 then :
 
-          frame_pointer_cflags="$frame_pointer_cflags -mno-omit-leaf-frame-pointer"
+        frame_pointer_cflags="$frame_pointer_cflags -mno-omit-leaf-frame-pointer"
 
 else case e in #(
   e) : ;;
@@ -10267,11 +10264,9 @@ else case e in #(
 esac
 fi
 
-      if test -n "$frame_pointer_cflags"; then
-        BASECFLAGS="$frame_pointer_cflags $BASECFLAGS"
-      fi
-
-fi
+    if test -n "$frame_pointer_cflags" && test "x$with_frame_pointers" != xno; then
+      BASECFLAGS="$frame_pointer_cflags $BASECFLAGS"
+    fi
 
     CFLAGS_NODIST="$CFLAGS_NODIST -std=c11"
 
