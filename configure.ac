@@ -2489,7 +2489,6 @@ then
   AX_CHECK_COMPILE_FLAG([-D_FORTIFY_SOURCE=3], [CFLAGS_NODIST="$CFLAGS_NODIST -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"], [AC_MSG_WARN([-D_FORTIFY_SOURCE=3 not supported])], [-Werror])
 fi
 
-# Check whether to build with frame pointers (PEP 831)
 AC_MSG_CHECKING([whether to build with frame pointers])
 AC_ARG_WITH([frame-pointers],
   [AS_HELP_STRING([--without-frame-pointers],

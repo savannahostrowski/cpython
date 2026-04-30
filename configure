@@ -10158,7 +10158,6 @@ fi
 
 fi
 
-# Check whether to build with frame pointers (PEP 831)
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to build with frame pointers" >&5
 printf %s "checking whether to build with frame pointers... " >&6; }
 
